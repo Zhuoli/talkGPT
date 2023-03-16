@@ -1,8 +1,10 @@
 import speech_recognition as sr
 import os
 import openai
-import subprocess
 import argparse
+from gtts import gTTS
+import tempfile
+from playsound import playsound
 
 
 LANGUAGES = {
@@ -17,9 +19,8 @@ def talk(language):
     with mic as source:
         r.adjust_for_ambient_noise(source)
         audio = r.listen(source)
-        print(audio)
         transcript = r.recognize_whisper(audio, language=language)
-        print(transcript)
+        print("WHISPER thinks you said: " + transcript)
         return transcript
 
 def send_request(language, words):
@@ -30,13 +31,21 @@ def send_request(language, words):
         {"role": "user", "content": words}
       ]
     )
-    answer = completion.choices[0].message["content"]
-    print(answer)
-    voice = ""
-    if language == "chinese":
-        voice = "--voice Tingting"
-    cmd_str = "say " + voice +  " \"" + answer.replace("\n", " ") + "\""
-    subprocess.call(cmd_str, shell=True)
+    return completion.choices[0].message["content"]
+
+def speak(text,language):
+  # Create a gTTS object with the text and language
+  tts_object = gTTS(text=text, lang=language, slow=False)
+
+  # Create a temporary file
+  with tempfile.NamedTemporaryFile(delete=True) as fp:
+      temp_filename = fp.name + ".mp3"
+      
+      # Save the converted speech to the temporary file
+      tts_object.save(temp_filename)
+      
+      # Play the temporary file using playsound
+      playsound(temp_filename)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -53,4 +62,6 @@ if __name__ == "__main__":
   print(language)
   while True:
       input_words = talk(language)
-      send_request(language, input_words)
+      answer = send_request(language, input_words)
+      print("GPT replied: " + answer)
+      speak(answer, 'en')
