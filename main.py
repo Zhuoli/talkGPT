@@ -1,5 +1,6 @@
 import speech_recognition as sr
 import os
+import sys
 import openai
 import argparse
 from gtts import gTTS
@@ -11,6 +12,10 @@ LANGUAGES = {
     "en": "english",
     "zh-hans": "chinese"
 }
+def print_error(text):
+    red = "\033[31m"
+    reset = "\033[0m"
+    print(f"{red}{text}{reset}")
 
 def talk(language):
     print("\n\nListening...")
@@ -23,8 +28,7 @@ def talk(language):
         print("WHISPER thinks you said: " + transcript)
         return transcript
 
-def send_request(language, words):
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+def gpt_answer(language, words):
     completion = openai.ChatCompletion.create(
       model="gpt-3.5-turbo-0301",
       messages=[
@@ -47,6 +51,7 @@ def speak(text,language):
       # Play the temporary file using playsound
       playsound(temp_filename)
 
+OPENAI_API_KEY = "OPENAI_API_KEY"
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument(
@@ -60,8 +65,12 @@ if __name__ == "__main__":
   options = parser.parse_args()
   language = LANGUAGES[options.language]
   print(language)
+  openai.api_key = os.getenv(OPENAI_API_KEY)
+  if openai.api_key is None:
+      print_error(OPENAI_API_KEY + " not found, please set it in environment variable")
+      sys.exit(1)
   while True:
       input_words = talk(language)
-      answer = send_request(language, input_words)
+      answer = gpt_answer(language, input_words)
       print("GPT replied: " + answer)
       speak(answer, 'en')
